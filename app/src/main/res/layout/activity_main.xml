@@ -1,23 +1,41 @@
-<LinearLayout
+<RelativeLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/ll_window"
+    android:id="@+id/rl_window"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#fff"
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <SurfaceView
-        android:id="@+id/sv_preview"
+    <RelativeLayout
+        android:id="@+id/rl_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1"/>
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="-100dp"
+        android:layout_marginTop="-100dp">
+
+        <SurfaceView
+            android:id="@+id/sv_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+        <LinearLayout
+            android:id="@+id/ll_focus"
+            android:layout_width="100px"
+            android:layout_height="10px"
+            android:layout_centerInParent="true"
+            android:background="@drawable/focus_background"
+            android:orientation="vertical"></LinearLayout>
+
+    </RelativeLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_weight="1"
+        android:layout_below="@+id/rl_container"
         android:background="#fff">
 
         <Button
@@ -36,4 +54,4 @@
 
     </RelativeLayout>
 
-</LinearLayout>
+</RelativeLayout>

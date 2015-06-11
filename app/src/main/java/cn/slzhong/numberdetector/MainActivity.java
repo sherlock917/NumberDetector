@@ -1,22 +1,23 @@
 package cn.slzhong.numberdetector;
 
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
-import android.graphics.Rect;
 import android.hardware.Camera;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.ActionBarActivity;
-import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -25,7 +26,9 @@ import java.util.List;
 
 public class MainActivity extends ActionBarActivity implements SurfaceHolder.Callback {
 
-    private LinearLayout window;
+    private RelativeLayout window;
+    private RelativeLayout container;
+    private LinearLayout focus;
     private Button shoot;
     private Button restart;
 
@@ -33,31 +36,21 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private SurfaceHolder surfaceHolder;
     private Camera camera;
 
+    private int deviceWidth;
+    private int deviceHeight;
+    private int pictureWidth;
+    private int pictureHeight;
+    private double pictureRatio;
+    private double focusWidthRatio;
+    private double focusHeightRatio;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        window = (LinearLayout)findViewById(R.id.ll_window);
-        shoot = (Button)findViewById(R.id.bt_shoot);
-        shoot.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                doShoot();
-            }
-        });
-        restart = (Button)findViewById(R.id.bt_restart);
-        restart.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                doRestart();
-            }
-        });
-
-        surfaceView = (SurfaceView)findViewById(R.id.sv_preview);
-        surfaceHolder = surfaceView.getHolder();
-        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
-        surfaceHolder.addCallback(MainActivity.this);
+        initViews();
+        initData();
     }
 
     @Override
@@ -95,7 +88,11 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                     min = i;
                 }
             }
-            parameters.setPictureSize(sizes.get(min).width, sizes.get(min).height);
+            pictureWidth = sizes.get(min).width;
+            pictureHeight = sizes.get(min).height;
+            pictureRatio = (double) pictureWidth / pictureHeight;
+            resizePreview();
+            parameters.setPictureSize(pictureWidth, pictureHeight);
             parameters.setPictureFormat(ImageFormat.JPEG);
             parameters.setRotation(90);
             camera.setDisplayOrientation(90);
@@ -117,6 +114,56 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             camera.startPreview();
             camera.release();
         }
+    }
+
+    private void initViews() {
+        window = (RelativeLayout) findViewById(R.id.rl_window);
+        shoot = (Button) findViewById(R.id.bt_shoot);
+        shoot.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                doShoot();
+            }
+        });
+        restart = (Button) findViewById(R.id.bt_restart);
+        restart.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                doRestart();
+            }
+        });
+
+        surfaceView = (SurfaceView) findViewById(R.id.sv_preview);
+        surfaceHolder = surfaceView.getHolder();
+        surfaceHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        surfaceHolder.addCallback(MainActivity.this);
+
+        focus = (LinearLayout) findViewById(R.id.ll_focus);
+        container = (RelativeLayout) findViewById(R.id.rl_container);
+    }
+
+    private void initData() {
+        DisplayMetrics dm = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(dm);
+        deviceWidth = dm.widthPixels;
+        deviceHeight = dm.heightPixels;
+
+        focusWidthRatio = 0.8;
+        focusHeightRatio = 0.15;
+    }
+
+    private void resizePreview() {
+        int width = deviceWidth;
+        int height = (int) (deviceWidth * pictureRatio);
+        int margin = (int) (-1 * height * focusHeightRatio * 2);
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(width, height);
+        layoutParams.setMargins(0, margin, 0, margin);
+        container.setLayoutParams(layoutParams);
+
+        ViewGroup.LayoutParams focusLayoutParams = focus.getLayoutParams();
+        focusLayoutParams.width = (int) (width * focusWidthRatio);
+        focusLayoutParams.height = (int) (height * focusHeightRatio);
+        focus.setLayoutParams(focusLayoutParams);
     }
 
     private void doShoot() {
