@@ -16,9 +16,11 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
@@ -29,8 +31,10 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private RelativeLayout window;
     private RelativeLayout container;
     private LinearLayout focus;
+    private LinearLayout canvas;
     private Button shoot;
     private Button restart;
+    private ImageView cropped;
 
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
@@ -140,6 +144,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
         focus = (LinearLayout) findViewById(R.id.ll_focus);
         container = (RelativeLayout) findViewById(R.id.rl_container);
+        canvas = (LinearLayout) findViewById(R.id.ll_canvas);
+        cropped = (ImageView) findViewById(R.id.iv_cropped);
     }
 
     private void initData() {
@@ -192,8 +198,12 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                         return null;
                     }
                 };
-                task.execute(data);
-                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                Bitmap bitmap = createCroppedBitmap(data);
+                cropped.setImageBitmap(bitmap);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
+                byte[] corpped = baos.toByteArray();
+                task.execute(corpped);
             }
         });
     }
@@ -202,5 +212,18 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         if (camera != null) {
             camera.startPreview();
         }
+    }
+
+    private Bitmap createCroppedBitmap(byte[] data) {
+        Bitmap src = BitmapFactory.decodeByteArray(data, 0, data.length);
+        int width = src.getWidth();
+        int height = src.getHeight();
+        Bitmap dst = Bitmap.createBitmap(src,
+                (int) (width * (1 - focusWidthRatio) / 2),
+                (int) (height * (1 - focusHeightRatio) / 2),
+                (int) (width * focusWidthRatio),
+                (int) (height * focusHeightRatio));
+        src.recycle();
+        return dst;
     }
 }
