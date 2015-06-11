@@ -20,6 +20,19 @@ public class Processor {
         return bytes;
     }
 
+    public static int[][] bitmapToMatrix(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        int[][] matrix = new int[height][width];
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                int val = Color.red(bitmap.getPixel(i, j));
+                matrix[j][i] = val == 0 ? 1 : 0;
+            }
+        }
+        return matrix;
+    }
+
     public static Bitmap grayProcess(Bitmap bitmap) {
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
@@ -86,6 +99,8 @@ public class Processor {
     }
 
     public static Bitmap clip(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
         HashMap<String, int[]> projection = project(bitmap);
         int[] x = projection.get("x");
         int[] y = projection.get("y");
@@ -107,7 +122,11 @@ public class Processor {
                 bottom = i > bottom ? i : bottom;
             }
         }
-        Bitmap result = Bitmap.createBitmap(bitmap, left, top, right - left, bottom - top);
+        int w = right - left;
+        int h = bottom - top;
+        width = w > 0 ? w : width;
+        height = h > 0 ? h : height;
+        Bitmap result = Bitmap.createBitmap(bitmap, left, top, width, height);
         return result;
     }
 
@@ -120,7 +139,6 @@ public class Processor {
         int[] y = projection.get("y");
 
         List<int[]> list = new LinkedList<>();
-
         int start, end;
         start = end = 0;
         while (start < x.length && end < x.length) {
@@ -140,14 +158,12 @@ public class Processor {
         }
 
         List<Bitmap> result = new LinkedList<>();
-
         for (int i = 0; i < list.size(); i++) {
             int[] point = list.get(i);
             Bitmap digit = Bitmap.createBitmap(bitmap, point[0], 0, point[1] - point[0], height);
             digit = clip(digit);
             result.add(digit);
         }
-
         return result;
     }
 

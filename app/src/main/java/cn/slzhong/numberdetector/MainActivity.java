@@ -4,7 +4,6 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.ActionBarActivity;
@@ -236,24 +235,20 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     }
 
     private void process(Bitmap bitmap) {
-        bitmap = Processor.grayProcess(bitmap);
-        bitmap = Processor.equalization(bitmap);
-        bitmap = Processor.binarize(bitmap);
-        bitmap = Processor.clip(bitmap);
-        preview.setImageBitmap(bitmap);
-
-        List<Bitmap> digits = Processor.split(bitmap);
-        result.setText("found " + digits.size() + " digits");
-        AsyncTask<List<Bitmap>, String, String> task = new AsyncTask<List<Bitmap>, String, String>() {
-            @Override
-            protected String doInBackground(List<Bitmap>... params) {
-                List<Bitmap> list = params[0];
-                for (int i = 0; i < list.size(); i++) {
-                    saveBitmap(list.get(i), i + ".jpg");
-                }
-                return null;
-            }
-        };
-        task.execute(digits);
+        Detector detector = new Detector(bitmap);
+        Bitmap processed = detector.getBitmap();
+        preview.setImageBitmap(processed);
+        result.setText(detector.getResult());
+        List<Bitmap> bitmapList = detector.getBitmapList();
+        canvas.removeAllViews();
+        for (int i = 0; i < bitmapList.size(); i++) {
+            ImageView imageView = new ImageView(this);
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(40, 40);
+            layoutParams.setMargins(2, 0, 2, 0);
+            imageView.setLayoutParams(layoutParams);
+            imageView.setBackgroundResource(R.drawable.bordered_red);
+            imageView.setImageBitmap(bitmapList.get(i));
+            canvas.addView(imageView);
+        }
     }
 }

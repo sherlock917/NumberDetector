@@ -27,7 +27,7 @@
             android:layout_width="100px"
             android:layout_height="10px"
             android:layout_centerInParent="true"
-            android:background="@drawable/focus_background"
+            android:background="@drawable/bordered_green"
             android:orientation="vertical"></LinearLayout>
 
     </RelativeLayout>
@@ -63,12 +63,15 @@
             android:id="@+id/iv_preview"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:layout_margin="5dp" />
 
         <LinearLayout
             android:id="@+id/ll_canvas"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:gravity="center"
             android:orientation="horizontal"></LinearLayout>
 
         <TextView
