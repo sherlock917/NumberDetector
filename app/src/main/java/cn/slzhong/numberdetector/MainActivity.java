@@ -19,8 +19,8 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
@@ -34,7 +34,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private LinearLayout canvas;
     private Button shoot;
     private Button restart;
-    private ImageView cropped;
+    private ImageView preview;
+    private TextView result;
 
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
@@ -47,6 +48,10 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private double pictureRatio;
     private double focusWidthRatio;
     private double focusHeightRatio;
+
+    private boolean previewStarted;
+
+    private List<Bitmap> digits;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +107,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             camera.setDisplayOrientation(90);
             camera.setParameters(parameters);
             camera.startPreview();
+            previewStarted = true;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -115,7 +121,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         if (camera != null) {
-            camera.startPreview();
+            camera.stopPreview();
             camera.release();
         }
     }
@@ -145,7 +151,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         focus = (LinearLayout) findViewById(R.id.ll_focus);
         container = (RelativeLayout) findViewById(R.id.rl_container);
         canvas = (LinearLayout) findViewById(R.id.ll_canvas);
-        cropped = (ImageView) findViewById(R.id.iv_cropped);
+        preview = (ImageView) findViewById(R.id.iv_preview);
+        result = (TextView) findViewById(R.id.tv_result);
     }
 
     private void initData() {
@@ -156,6 +163,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
         focusWidthRatio = 0.8;
         focusHeightRatio = 0.15;
+
+        previewStarted = false;
     }
 
     private void resizePreview() {
@@ -173,44 +182,22 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     }
 
     private void doShoot() {
-        camera.takePicture(null, null, new Camera.PictureCallback() {
-            @Override
-            public void onPictureTaken(byte[] data, Camera camera) {
-                AsyncTask<byte[], String, String> task = new AsyncTask<byte[], String, String>() {
-                    @Override
-                    protected String doInBackground(byte[]... params) {
-                        File root;
-                        if (Environment.isExternalStorageEmulated()) {
-                            root = Environment.getExternalStorageDirectory();
-                        } else {
-                            root = Environment.getDataDirectory();
-                        }
-
-                        File picture = new File(root.toString() + "/test.jpg");
-                        try {
-                            FileOutputStream fos = new FileOutputStream(picture.getPath());
-                            fos.write(params[0]);
-                            fos.close();
-                            System.out.println("*****done");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        return null;
-                    }
-                };
-                Bitmap bitmap = createCroppedBitmap(data);
-                cropped.setImageBitmap(bitmap);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, baos);
-                byte[] corpped = baos.toByteArray();
-                task.execute(corpped);
-            }
-        });
+        if (camera != null && previewStarted) {
+            previewStarted = false;
+            camera.takePicture(null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] data, Camera camera) {
+                    Bitmap bitmap = createCroppedBitmap(data);
+                    process(bitmap);
+                }
+            });
+        }
     }
 
     private void doRestart() {
         if (camera != null) {
             camera.startPreview();
+            previewStarted = true;
         }
     }
 
@@ -225,5 +212,48 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
                 (int) (height * focusHeightRatio));
         src.recycle();
         return dst;
+    }
+
+    private void saveBitmap(Bitmap bitmap, String name) {
+        File root;
+        if (Environment.isExternalStorageEmulated()) {
+            root = Environment.getExternalStorageDirectory();
+        } else {
+            root = Environment.getDataDirectory();
+        }
+
+        byte[] bytes = Processor.bitmapToByteArray(bitmap);
+
+        File picture = new File(root.toString() + "/" + name);
+        try {
+            FileOutputStream fos = new FileOutputStream(picture.getPath());
+            fos.write(bytes);
+            fos.close();
+            System.out.println("*****saved " + name);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void process(Bitmap bitmap) {
+        bitmap = Processor.grayProcess(bitmap);
+        bitmap = Processor.equalization(bitmap);
+        bitmap = Processor.binarize(bitmap);
+        bitmap = Processor.clip(bitmap);
+        preview.setImageBitmap(bitmap);
+
+        List<Bitmap> digits = Processor.split(bitmap);
+        result.setText("found " + digits.size() + " digits");
+        AsyncTask<List<Bitmap>, String, String> task = new AsyncTask<List<Bitmap>, String, String>() {
+            @Override
+            protected String doInBackground(List<Bitmap>... params) {
+                List<Bitmap> list = params[0];
+                for (int i = 0; i < list.size(); i++) {
+                    saveBitmap(list.get(i), i + ".jpg");
+                }
+                return null;
+            }
+        };
+        task.execute(digits);
     }
 }
