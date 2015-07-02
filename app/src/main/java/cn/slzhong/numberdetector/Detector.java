@@ -109,7 +109,15 @@ public class Detector {
                 return 1;
             }
 
-
+            HashMap<String, Integer> hor = countHorizontalLine(scaled);
+            int horCount = hor.get("count");
+            int horPos = hor.get("pos");
+            if (horCount == 1) {
+                if (horPos < scaled.length / 5) {
+                    return 7;
+                }
+            }
+//            printMatrix(scaled);
         }
 
         return -1;
@@ -193,6 +201,41 @@ public class Detector {
             }
         }
         result.put("count", count);
+        return result;
+    }
+
+    private HashMap<String, Integer> countHorizontalLine(int[][] matrix) {
+        HashMap<String, Integer> result = new HashMap<>();
+        result.put("count", 0);
+        result.put("pos", 0);
+        int count = 0;
+        boolean same = false;
+        for (int i = 0; i < matrix.length; i++) {
+            int start = 0, end = 0;
+            boolean isLine = false;
+            for (int j = 0; j < matrix[i].length; j++) {
+                if (matrix[i][j] == 1) {
+                    if (!isLine) {
+                        start = j;
+                    }
+                    end = j;
+                    isLine = true;
+                }
+                if (matrix[i][j] == 0 && isLine) {
+                    isLine = false;
+                }
+            }
+            int span = end - start;
+            if (span > matrix[i].length / 2 && !same) {
+                count++;
+                result.put("pos", i);
+                same = true;
+            } else {
+                same = false;
+            }
+        }
+        result.put("count", count);
+
         return result;
     }
 
