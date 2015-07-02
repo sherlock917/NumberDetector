@@ -88,7 +88,7 @@ public class Processor {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 int val = Color.red(bitmap.getPixel(i, j));
-                if (val > 35) {
+                if (val > 20) {
                     result.setPixel(i, j, Color.rgb(255, 255, 255));
                 } else {
                     result.setPixel(i, j, Color.rgb(0, 0, 0));
@@ -122,11 +122,42 @@ public class Processor {
                 bottom = i > bottom ? i : bottom;
             }
         }
-        int w = right - left;
-        int h = bottom - top;
-        width = w > 0 ? w : width;
-        height = h > 0 ? h : height;
-        Bitmap result = Bitmap.createBitmap(bitmap, left, top, width, height);
+        try {
+            int w = right - left;
+            int h = bottom - top;
+            width = w > 0 ? w : width;
+            height = h > 0 ? h : height;
+            return Bitmap.createBitmap(bitmap, left, top, width, height);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static Bitmap lighten(Bitmap bitmap) {
+        int width = bitmap.getWidth();
+        int height = bitmap.getHeight();
+        Bitmap result = Bitmap.createBitmap(bitmap);
+
+        boolean black = false;
+        int span = 0;
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int val = Color.red(bitmap.getPixel(j, i));
+                if (val == 0) {
+                    black = true;
+                    span++;
+                } else if (val == 255 && black && span > 5) {
+                    black = false;
+                    span = 0;
+                    for (int k = 0; k < 3; k++) {
+                        if (j - k >= 0) {
+                            result.setPixel(j - k, i, Color.rgb(255, 255, 255));
+                        }
+                    }
+                }
+            }
+        }
         return result;
     }
 
@@ -136,7 +167,6 @@ public class Processor {
 
         HashMap<String, int[]> projection = Processor.project(bitmap);
         int[] x = projection.get("x");
-        int[] y = projection.get("y");
 
         List<int[]> list = new LinkedList<>();
         int start, end;
@@ -145,14 +175,16 @@ public class Processor {
             if (x[start] == 0) {
                 start++;
             } else {
-                int[] point = new int[2];
-                point[0] = start;
                 end = start + 1;
                 while (end < x.length && x[end] == 1) {
                     end++;
                 }
-                point[1] = end;
-                list.add(point);
+                if (end - start > 5) {
+                    int[] point = new int[2];
+                    point[0] = start;
+                    point[1] = end;
+                    list.add(point);
+                }
                 start = end = end + 1;
             }
         }
@@ -162,7 +194,9 @@ public class Processor {
             int[] point = list.get(i);
             Bitmap digit = Bitmap.createBitmap(bitmap, point[0], 0, point[1] - point[0], height);
             digit = clip(digit);
-            result.add(digit);
+            if (digit != null) {
+                result.add(digit);
+            }
         }
         return result;
     }

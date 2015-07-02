@@ -39,6 +39,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
     private SurfaceView surfaceView;
     private SurfaceHolder surfaceHolder;
     private Camera camera;
+    private Camera.Parameters cameraParameters;
 
     private int deviceWidth;
     private int deviceHeight;
@@ -88,8 +89,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         camera = Camera.open();
         try {
             camera.setPreviewDisplay(holder);
-            Camera.Parameters parameters = camera.getParameters();
-            List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
+            cameraParameters = camera.getParameters();
+            List<Camera.Size> sizes = cameraParameters.getSupportedPictureSizes();
             int min = -1;
             for (int i = 0; i < sizes.size(); i++) {
                 if (min == -1 || sizes.get(i).width < sizes.get(min).width) {
@@ -100,11 +101,13 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             pictureHeight = sizes.get(min).height;
             pictureRatio = (double) pictureWidth / pictureHeight;
             resizePreview();
-            parameters.setPictureSize(pictureWidth, pictureHeight);
-            parameters.setPictureFormat(ImageFormat.JPEG);
-            parameters.setRotation(90);
+            cameraParameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+            cameraParameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            cameraParameters.setPictureSize(pictureWidth, pictureHeight);
+            cameraParameters.setPictureFormat(ImageFormat.JPEG);
+            cameraParameters.setRotation(90);
             camera.setDisplayOrientation(90);
-            camera.setParameters(parameters);
+            camera.setParameters(cameraParameters);
             camera.startPreview();
             previewStarted = true;
         } catch (Exception e) {
@@ -186,6 +189,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             camera.takePicture(null, null, new Camera.PictureCallback() {
                 @Override
                 public void onPictureTaken(byte[] data, Camera camera) {
+                    cameraParameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                    camera.setParameters(cameraParameters);
                     Bitmap bitmap = createCroppedBitmap(data);
                     process(bitmap);
                 }
@@ -195,6 +200,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
 
     private void doRestart() {
         if (camera != null) {
+            cameraParameters.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+            camera.setParameters(cameraParameters);
             camera.startPreview();
             previewStarted = true;
         }
@@ -238,7 +245,7 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
         Detector detector = new Detector(bitmap);
         Bitmap processed = detector.getBitmap();
         preview.setImageBitmap(processed);
-        result.setText(detector.getResult());
+
         List<Bitmap> bitmapList = detector.getBitmapList();
         canvas.removeAllViews();
         for (int i = 0; i < bitmapList.size(); i++) {
@@ -250,5 +257,8 @@ public class MainActivity extends ActionBarActivity implements SurfaceHolder.Cal
             imageView.setImageBitmap(bitmapList.get(i));
             canvas.addView(imageView);
         }
+
+        String detected = detector.getResult();
+        result.setText(detected);
     }
 }

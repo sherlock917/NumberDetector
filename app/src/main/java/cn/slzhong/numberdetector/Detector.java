@@ -2,6 +2,7 @@ package cn.slzhong.numberdetector;
 
 import android.graphics.Bitmap;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -22,6 +23,7 @@ public class Detector {
         bitmap = Processor.equalization(bitmap);
         bitmap = Processor.binarize(bitmap);
         bitmap = Processor.clip(bitmap);
+//        bitmap = Processor.lighten(bitmap);
         bitmapList = Processor.split(bitmap);
 
         matrixify();
@@ -40,6 +42,22 @@ public class Detector {
         return result;
     }
 
+    public double asert(String value) {
+        int correct = 0;
+        int total = value.length();
+
+        if (result == null || result.length() != value.length()) {
+            return 0.0;
+        }
+
+        for (int i = 0; i < value.length(); i++) {
+            if (value.charAt(i) == result.charAt(i)) {
+                correct++;
+            }
+        }
+        return (double) correct / total;
+    }
+
     private void matrixify() {
         if (matrixList == null) {
             matrixList = new LinkedList<>();
@@ -52,17 +70,138 @@ public class Detector {
 
     private void detect() {
         for (int i = 0; i < matrixList.size(); i++) {
-            result += detectDigit(matrixList.get(i));
+            int digit = detectDigit(matrixList.get(i));
+            result += digit > -1 ? digit : "*";
         }
     }
 
     private int detectDigit(int[][] matrix) {
-        double ratio = (double) matrix[0].length / matrix.length;
-        System.out.println("*****" + ratio);
-        if (ratio < 1.0 / 3.0) {
-            return 1;
-        } else {
-            return 0;
+        int size = 50;
+        int[][] square = squarify(matrix);
+        int[][] scaled = scale(square, size);
+
+        HashMap<String, Integer> loop = countLoop(scaled);
+        int count = loop.get("count");
+        int start = (loop.get("start") == null) ? 0 : loop.get("start");
+        int end = (loop.get("end") == null) ? 0 : loop.get("end");
+
+        if (count == 2) {
+            return 8;
+        }
+
+        if (count == 1) {
+            int span = (start > 0 && end > 0) ? end - start : 0;
+            if (span >= scaled.length * 2 / 3) {
+                return 0;
+            }
+
+            if (start < scaled.length / 3 && end < scaled.length * 2 / 3) {
+                return 9;
+            }
+
+            if (Math.abs(scaled.length / 2 - start) <= scaled.length / 3) {
+                return 6;
+            }
+        }
+
+        if (count == 0) {
+            if (matrix.length > 3 * matrix[0].length) {
+                return 1;
+            }
+
+
+        }
+
+        return -1;
+    }
+
+    private int[][] squarify(int[][] matrix) {
+        int size = (matrix[0].length > matrix.length) ? matrix[0].length : matrix.length;
+        int newLeft = (size - matrix[0].length) / 2;
+        int newTop = (size - matrix.length) / 2;
+        int[][] newMatrix = new int[size][size];
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                newMatrix[newTop + i][newLeft + j] = matrix[i][j];
+            }
+        }
+        return newMatrix;
+    }
+
+    private int[][] scale(int[][] matrix, int size) {
+        int span = matrix.length / size;
+        int x = 0, y = 0;
+        int[][] scaled = new int[size][size];
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                scaled[i][j] = matrix[y][x];
+                x += span;
+            }
+            x = 0;
+            y += span;
+        }
+        return scaled;
+    }
+
+    private HashMap<String, Integer> countLoop(int[][] matrix) {
+        HashMap<String, Integer> result = new HashMap<>();
+        int count = 0;
+        boolean same = false;
+        boolean loopStart = false;
+        int last = -1;
+        for (int i = 0; i < matrix.length; i++) {
+            int line = 0;
+            boolean detected = false;
+            int start = -1;
+            for (int j = 0; j < matrix[i].length; j++) {
+                if (matrix[i][j] == 1 && !detected) {
+                    line++;
+                    detected = true;
+                    if (start == -1) {
+                        start = j;
+                    }
+                } else if (matrix[i][j] == 0 && detected) {
+                    detected = false;
+                }
+            }
+            if (line == 1) {
+                loopStart = true;
+            }
+            if (last == -1) {
+                last = start;
+            }
+            int gap = Math.abs(last - start);
+            last = start;
+            if (loopStart) {
+                if (line > 1 && !same) {
+                    result.put("start", i);
+                    if (!same) {
+                        count++;
+                        same = true;
+                    }
+                } else {
+                    if (same) {
+                        result.put("end", i);
+                    }
+                    if (line <= 1) {
+                        same = false;
+                        if (gap >= 5 && count > 0) {
+                            count--;
+                        }
+                    }
+                }
+            }
+        }
+        result.put("count", count);
+        return result;
+    }
+
+    private void printMatrix(int[][] matrix) {
+        for (int i = 0; i < matrix.length; i++) {
+            for (int j = 0; j < matrix[i].length; j++) {
+                System.out.print(matrix[i][j]);
+            }
+            System.out.print("\n");
         }
     }
 
