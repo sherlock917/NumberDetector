@@ -23,7 +23,6 @@ public class Detector {
         bitmap = Processor.equalization(bitmap);
         bitmap = Processor.binarize(bitmap);
         bitmap = Processor.clip(bitmap);
-//        bitmap = Processor.lighten(bitmap);
         bitmapList = Processor.split(bitmap);
 
         matrixify();
@@ -112,12 +111,12 @@ public class Detector {
             HashMap<String, Integer> hor = countHorizontalLine(scaled);
             int horCount = hor.get("count");
             int horPos = hor.get("pos");
+
             if (horCount == 1) {
                 if (horPos < scaled.length / 5) {
                     return 7;
                 }
             }
-//            printMatrix(scaled);
         }
 
         return -1;
@@ -156,7 +155,6 @@ public class Detector {
         int count = 0;
         boolean same = false;
         boolean loopStart = false;
-        int last = -1;
         for (int i = 0; i < matrix.length; i++) {
             int line = 0;
             boolean detected = false;
@@ -175,11 +173,6 @@ public class Detector {
             if (line == 1) {
                 loopStart = true;
             }
-            if (last == -1) {
-                last = start;
-            }
-            int gap = Math.abs(last - start);
-            last = start;
             if (loopStart) {
                 if (line > 1 && !same) {
                     result.put("start", i);
@@ -193,9 +186,6 @@ public class Detector {
                     }
                     if (line <= 1) {
                         same = false;
-                        if (gap >= 5 && count > 0) {
-                            count--;
-                        }
                     }
                 }
             }
@@ -210,6 +200,7 @@ public class Detector {
         result.put("pos", 0);
         int count = 0;
         boolean same = false;
+        int lastStart = 0, lastEnd = 0;
         for (int i = 0; i < matrix.length; i++) {
             int start = 0, end = 0;
             boolean isLine = false;
@@ -226,13 +217,15 @@ public class Detector {
                 }
             }
             int span = end - start;
+
             if (span > matrix[i].length / 2 && !same) {
                 count++;
                 result.put("pos", i);
                 same = true;
-            } else {
-                same = false;
-            }
+            } else
+                same = Math.abs(start - lastStart) < matrix.length / 10 && Math.abs(end - lastEnd) < matrix.length / 10;
+            lastStart = start;
+            lastEnd = end;
         }
         result.put("count", count);
 

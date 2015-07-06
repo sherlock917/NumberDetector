@@ -179,7 +179,7 @@ public class Processor {
                 while (end < x.length && x[end] == 1) {
                     end++;
                 }
-                if (end - start > 5) {
+                if (end - start > 3) {
                     int[] point = new int[2];
                     point[0] = start;
                     point[1] = end;
